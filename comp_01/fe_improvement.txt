@@ -1,0 +1,107 @@
+Notebook_comp01_fe_agr_1
+
+Help me to improve this feature engineering sql script:
+
+%%sql
+CREATE or REPLACE TABLE competencia_01_fe_agr_1 as
+SELECT
+    *,
+    
+    suma_sin_null(Master_msaldototal, Visa_msaldototal) as tc_saldo_total,
+    suma_sin_null(mcuenta_corriente, mcaja_ahorro) as saldo_total_cuentas,
+    suma_sin_null(suma_sin_null(Visa_msaldototal, Master_msaldototal), suma_sin_null(mcuenta_corriente, mcaja_ahorro)) as saldo_total_completo,
+    suma_sin_null(mprestamos_personales, suma_sin_null(mprestamos_prendarios, mprestamos_hipotecarios)) as deuda_total_prestamos,
+
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY cliente_antiguedad) as cliente_antiguedad_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY mpayroll) as payroll_10tile,
+    ntile(10) OVER (partition BY foto_mes ORDER BY mtarjeta_visa_consumo) as visa_consumo_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY ctarjeta_visa) as visa_tarjetas_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY mtarjeta_master_consumo) as master_consumo_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY ctarjeta_master) as master_tarjetas_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY cproductos) as productos_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY mcuenta_corriente) as cuenta_corriente_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY mcaja_ahorro) as caja_ahorro_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY suma_sin_null(ctarjeta_visa, ctarjeta_master)) as tarjetas_credito_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY suma_sin_null(mtarjeta_visa_consumo, mtarjeta_master_consumo)) as tarjetas_consumo_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY mprestamos_personales) as prestamos_personales_10tile,
+    ntile(10) OVER (PARTITION BY foto_mes ORDER BY mprestamos_hipotecarios) as prestamos_hipotecarios_10tile,
+
+    LAG(mpayroll, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_mpayroll,
+    LAG(suma_sin_null(mtarjeta_visa_consumo, mtarjeta_master_consumo), 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_tarjetas_consumo,
+    LAG(mcuenta_corriente, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_cuenta_corriente,
+    LAG(mcaja_ahorro, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_caja_ahorro,
+    LAG(mcuentas_saldo, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_cuentas_saldo,
+    LAG(mcomisiones_mantenimiento, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_comisiones_mantenimiento,
+    LAG(mcomisiones_otras, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_comisiones_otras,
+
+    mpayroll - LAG(mpayroll, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS delta_1_mpayroll,
+    mtarjeta_visa_consumo - LAG(mtarjeta_visa_consumo, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS delta_1_visa_consumo,
+    mcuenta_corriente - LAG(mcuenta_corriente, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS delta_1_cuenta_corriente,
+    mprestamos_personales - LAG(mprestamos_personales, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS delta_1_prestamos_personales,
+    ctarjeta_visa_transacciones - LAG(ctarjeta_visa_transacciones, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS delta_1_transacciones_visa,
+    mcomisiones_mantenimiento - LAG(mcomisiones_mantenimiento, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS delta_1_comisiones_mantenimiento,
+    mcomisiones_otras - LAG(mcomisiones_otras, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS delta_1_comisiones_otras,
+
+    AVG(mpayroll) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS mov_avg_3_mpayroll,
+    AVG(mcuenta_corriente) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS mov_avg_3_cuenta_corriente,
+    AVG(mprestamos_personales) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS mov_avg_3_prestamos_personales,
+    AVG(mcomisiones_mantenimiento) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS mov_avg_3_comisiones_mantenimiento,
+    AVG(mcomisiones_otras) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS mov_avg_3_comisiones_otras,
+
+    REGR_SLOPE(mpayroll, cliente_antiguedad) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS payroll_slope_3,
+    REGR_SLOPE(mcuenta_corriente, cliente_antiguedad) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS cuenta_corriente_slope_3,
+    REGR_SLOPE(mtarjeta_visa_consumo, cliente_antiguedad) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS visa_consumo_slope_3,
+    REGR_SLOPE(mcomisiones_mantenimiento, cliente_antiguedad) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS comisiones_mantenimiento_slope_3,
+    REGR_SLOPE(mcomisiones_otras, cliente_antiguedad) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS comisiones_otras_slope_3,
+
+    CASE WHEN Master_status IN (6, 7, 9) THEN 1 ELSE 0 END AS Master_cuenta_cerrada,
+    CASE WHEN Visa_status IN (6, 7, 9) THEN 1 ELSE 0 END AS Visa_cuenta_cerrada,
+
+    mcuentas_saldo / NULLIF(suma_sin_null(mactivos_margen, mpasivos_margen), 0) AS ratio_saldo_margen,
+    suma_sin_null(mcomisiones_mantenimiento, mcomisiones_otras) AS total_comisiones_cliente,
+    suma_sin_null(ctarjeta_visa_transacciones, ctarjeta_master_transacciones) AS transacciones_totales_tarjetas,
+    ctarjeta_debito_transacciones - suma_sin_null(ctarjeta_visa_transacciones, ctarjeta_master_transacciones) AS delta_debito_vs_credito,
+    thomebanking + tmobile_app AS indicador_banca_digital,
+
+    SUM(ctarjeta_visa_transacciones) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS sum_3_transacciones_visa,
+    SUM(ctarjeta_master_transacciones) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS sum_3_transacciones_master,
+    SUM(ctarjeta_debito_transacciones) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS sum_3_transacciones_debito,
+    MAX(mcuenta_corriente) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS max_3_cuenta_corriente,
+    MIN(mcuenta_corriente) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS min_3_cuenta_corriente,
+    MAX(mpayroll) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS max_3_mpayroll,
+    MIN(mpayroll) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS min_3_mpayroll,
+    COUNT(*) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS count_3_periods,
+    SUM(mprestamos_personales) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS sum_6_prestamos_personales,
+    AVG(mtarjeta_master_consumo) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS avg_6_master_consumo,
+    REGR_SLOPE(mcuenta_corriente, foto_mes) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS cuenta_corriente_slope_6,
+    REGR_SLOPE(mpayroll, foto_mes) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS payroll_slope_6,
+
+    LAG(mtarjeta_master_consumo, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_master_consumo,
+    LAG(mtarjeta_visa_consumo, 1) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes) AS lag_1_visa_consumo,
+    SUM(mpayroll) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS sum_6_mpayroll,
+    SUM(mcuenta_corriente) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS sum_6_cuenta_corriente,
+    AVG(mcuentas_saldo) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 12 PRECEDING AND CURRENT ROW) AS avg_12_cuentas_saldo,
+    REGR_SLOPE(mtarjeta_master_consumo, foto_mes) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 12 PRECEDING AND CURRENT ROW) AS master_consumo_slope_12,
+    REGR_SLOPE(mprestamos_personales, foto_mes) OVER (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN 12 PRECEDING AND CURRENT ROW) AS prestamos_personales_slope_12
+
+FROM competencia_01
+
+With:
+Using previous 1° month for lags, delta and slope features
+REGR_SLOPE for both foto_mes and cliente_antiguedad
+ntile(10) at the end and to all variables
+
+
+
+
+---
+
+Now, adapt that scrpt with the previous 1° and 2° months for lags, delta and slope features
+REGR_SLOPE for both foto_mes and cliente_antiguedad
+complete the ntile(10) at the end adding all additional feature created
+
+---
+
+Now, adapt this scrpt with the previous 1°, 2° and 3° months for lags, delta and slope features
+REGR_SLOPE for both foto_mes and cliente_antiguedad, keeping slopes for the three cases (previous 1°, 2° and 3° months)
+complete the ntile(10) at the end adding all additional feature created

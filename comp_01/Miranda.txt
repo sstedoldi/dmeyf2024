@@ -1,0 +1,16 @@
+Miranda:
+
+Fuga de clientes VIP
+
+- ¿Qué motiva este análisis? 
+- ¿Porqué se van los clientes, en general? EDA
+- ¿Quiénes son los clientes que se van? Segmentación + EDA
+- Estrategia de retención propuesta
+
+
+Cómo seguir con el análisis de la segmentación? Sumar EDA a:
+
+- clusters con alta tasa de BAJA vs. CONTINUA
+- clusters que representan buena cantidad de bajas
+
+Probar con segmentación en una muestra más pequeña, donde se crean clusters ~ 100 % fuga 
