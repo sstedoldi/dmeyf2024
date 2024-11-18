@@ -1,8 +1,8 @@
 # Importar las librerías necesarias
 import numpy as np
 import pandas as pd
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+# from sklearn.tree import DecisionTreeClassifier
+# from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
@@ -33,8 +33,8 @@ class ModelPipeline:
 
         # Mapear model_type al clasificador correspondiente
         self.classifier_map = {
-            'decision_tree': DecisionTreeClassifier,
-            'random_forest': RandomForestClassifier,
+            # 'decision_tree': DecisionTreeClassifier,
+            # 'random_forest': RandomForestClassifier,
             'xgboost': XGBClassifier,
             'lightgbm': LGBMClassifier
         }
@@ -105,8 +105,8 @@ class ModelPipeline:
             learning_rate = trial.suggest_float('eta', 0.01, 0.3, log=True)  # 'eta' es equivalente a 'learning_rate'
             gamma = trial.suggest_float('gamma', 0, 5)
             min_child_weight = trial.suggest_int('min_child_weight', 1, 10)
-            subsample = trial.suggest_float('subsample', 0.5, 1.0)
-            colsample_bytree = trial.suggest_float('colsample_bytree', 0.5, 1.0)
+            subsample = trial.suggest_float('subsample', 0.5, 0.9)
+            colsample_bytree = trial.suggest_float('colsample_bytree', 0.5, 0.9)
             if self.reg:
                 reg_lambda = trial.suggest_float('lambda', 0.0, 10.0)
                 reg_alpha = trial.suggest_float('alpha', 0.0, 10.0)
@@ -114,7 +114,8 @@ class ModelPipeline:
 
             params = {
                 'booster': 'gbtree',
-                'n_estimators': n_estimators,
+                'n_estimators': 200,
+                # 'n_estimators': n_estimators,
                 'max_leaves': max_leaves,
                 'learning_rate': learning_rate,
                 'gamma': gamma,
@@ -149,24 +150,23 @@ class ModelPipeline:
 
         def objective_lightgbm(trial):
             # Hiperparámetros para LGBMClassifier
-            n_estimators = trial.suggest_int('n_estimators', 100, 1000)
+            n_estimators = trial.suggest_int('n_estimators', 50, 500)
             num_leaves = trial.suggest_int('num_leaves', 31, 256)
-            # max_depth = trial.suggest_int('max_depth', -1, 30) # conflict with num_leaves
             learning_rate = trial.suggest_float('learning_rate', 0.001, 0.3, log=True)
             min_data_in_leaf = trial.suggest_int('min_data_in_leaf', 20, 100)
             if self.reg:
                 lambda_l1 = trial.suggest_float('lambda_l1', 0.0, 10.0)
                 lambda_l2 = trial.suggest_float('lambda_l2', 0.0, 10.0)
             min_gain_to_split = trial.suggest_float('min_gain_to_split', 0.0, 1.0)
-            feature_fraction = trial.suggest_float('feature_fraction', 0.5, 1.0)
-            bagging_fraction = trial.suggest_float('bagging_fraction', 0.5, 1.0)
+            feature_fraction = trial.suggest_float('feature_fraction', 0.5, 0.9)
+            bagging_fraction = trial.suggest_float('bagging_fraction', 0.5, 0.9)
             bagging_freq = trial.suggest_int('bagging_freq', 1, 7)
             max_bin = trial.suggest_int('max_bin', 64, 255)
 
             params = {
-                'n_estimators': n_estimators,
+                'n_estimators': 200,
+                # 'n_estimators': n_estimators,
                 'num_leaves': num_leaves,
-                # 'max_depth': max_depth,
                 'learning_rate': learning_rate,
                 'min_data_in_leaf': min_data_in_leaf,
                 'min_gain_to_split': min_gain_to_split,
@@ -174,8 +174,6 @@ class ModelPipeline:
                 'bagging_fraction': bagging_fraction,
                 'bagging_freq': bagging_freq,
                 'max_bin': max_bin,
-                # 'objective': 'binary',  # Specify the objective function
-                # 'metric': 'binary_logloss',  # Specify the evaluation metric
                 'random_state': self.seeds[self.s],
                 'n_jobs': self.n_jobs
             }
@@ -281,7 +279,7 @@ class ModelPipeline:
             X_futuro = pd.DataFrame(imputer.fit_transform(X_futuro), columns=X_futuro.columns)
 
         # Simular el split público/privado
-        sss_futuro = StratifiedShuffleSplit(n_splits=50, test_size=0.3, random_state=self.seeds[self.s])
+        sss_futuro = StratifiedShuffleSplit(n_splits=30, test_size=0.3, random_state=self.seeds[self.s])
 
         ganancias_futuro_privada_best = []
         ganancias_futuro_privada_base = []
