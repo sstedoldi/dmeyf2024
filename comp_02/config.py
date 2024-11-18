@@ -1,8 +1,9 @@
 base_path = '/home/santtedo/'
 modelos_path = base_path + 'buckets/b1/modelos/'
-db_path = base_path + 'buckets/b1/db/'
+db_path = base_path + 'buckets/b1/optimizacion/'
 datasets_path = base_path + 'buckets/b1/datasets/'
 exp_path = base_path + 'buckets/b1/exp/'
+pred_path = base_path + 'buckets/b1/predicciones/'
 
 dataset_file_crudo = datasets_path + 'competencia_02_crudo.csv.gz'
 dataset_file_clase_ternaria = datasets_path + 'competencia_02_brandoni.csv.gz'
