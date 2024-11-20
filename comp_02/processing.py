@@ -349,3 +349,85 @@ class ModelPipeline:
         print(f"Ganancia media del modelo base en público: {mean_base_publico}")
         print(f"Ganancia media del modelo Best en privado: {mean_best_privado}")
         print(f"Ganancia media del modelo Best en público: {mean_best_publico}")
+
+
+def plot_comparisons_on_kaggle_split(name_model_a, results_a_priv, results_a_pub,
+                     name_model_b, results_b_priv, results_b_pub, 
+                     alfa=0.05):
+    
+    print(f"Comparando modelos: {name_model_a} vs. {name_model_b}")
+
+    df_pred_a_priv = pd.DataFrame({'Ganancia': results_a_priv, 
+                                   'Modelo': f'{name_model_a}_best',
+                                   'Grupo': 'Privado'})
+    df_pred_a_pub = pd.DataFrame({'Ganancia': results_a_pub, 
+                                'Modelo': f'{name_model_a}_best',
+                                'Grupo': 'Publico'})
+    df_pred_b_priv = pd.DataFrame({'Ganancia': results_b_priv, 
+                                   'Modelo': f'{name_model_b}_best',
+                                   'Grupo': 'Privado'})
+    df_pred_b_pub = pd.DataFrame({'Ganancia': results_b_pub, 
+                                'Modelo': f'{name_model_b}_best',
+                                'Grupo': 'Publico'})
+    
+    df_combined = pd.concat([df_pred_a_priv, df_pred_a_pub, df_pred_b_priv, df_pred_b_pub])
+
+    # Gráfico de las distribuciones
+    g = sns.FacetGrid(df_combined, col="Grupo", row="Modelo", aspect=2)
+    g.map(sns.histplot, "Ganancia", kde=True)
+    plt.show()
+
+    # Cálculo de ganancias medias
+    mean_pred_a_priv = df_combined[
+        (df_combined['Modelo'] == f'{name_model_a}_best') & (df_combined['Grupo'] == 'Privado')
+    ]['Ganancia'].mean()
+    mean_pred_a_pub = df_combined[
+        (df_combined['Modelo'] == f'{name_model_a}_best') & (df_combined['Grupo'] == 'Publico')
+    ]['Ganancia'].mean()
+    mean_pred_b_priv = df_combined[
+        (df_combined['Modelo'] == f'{name_model_b}_best') & (df_combined['Grupo'] == 'Privado')
+    ]['Ganancia'].mean()
+    mean_pred_b_pub = df_combined[
+        (df_combined['Modelo'] == f'{name_model_b}_best') & (df_combined['Grupo'] == 'Publico')
+    ]['Ganancia'].mean()
+
+    print(f"Ganancia media del modelo {name_model_a} privado: {mean_pred_a_priv}")
+    print(f"Ganancia media del modelo {name_model_a} publico: {mean_pred_a_pub}")
+    print(f"Ganancia media del modelo {name_model_b} privado: {mean_pred_b_priv}")
+    print(f"Ganancia media del modelo {name_model_b} publico: {mean_pred_b_pub}")
+
+    # Importar la función para el test estadístico
+    from scipy.stats import mannwhitneyu
+
+    # Realizar el test de Mann-Whitney U - Privado
+    estadistico_u_priv, p_valor_priv = mannwhitneyu(
+        df_pred_a_priv['Ganancia'], df_pred_b_priv['Ganancia'], alternative='less'
+    )
+
+    # Mostrar los resultados del test
+    print(f"\nResultado del test estadístico Mann-Whitney U (privado):")
+    print(f"Estadístico U = {estadistico_u_priv}")
+    print(f"P-valor = {p_valor_priv}")
+
+    # Interpretación del resultado
+    if p_valor_priv < alfa:
+        print(f"Rechazamos la hipótesis nula. Hay evidencia estadística de que la distribución de {name_model_b}_priv es mayor que la de {name_model_a}_priv.")
+    else:
+        print(f"No se rechaza la hipótesis nula. No hay evidencia suficiente para afirmar que la distribución de {name_model_b}_priv es mayor que la de {name_model_a}_priv.")
+
+
+    # Realizar el test de Mann-Whitney U - Publico
+    estadistico_u_pub, p_valor_pub = mannwhitneyu(
+        df_pred_a_pub['Ganancia'], df_pred_b_pub['Ganancia'], alternative='less'
+    )
+
+    # Mostrar los resultados del test
+    print(f"\nResultado del test estadístico Mann-Whitney U (privado):")
+    print(f"Estadístico U = {estadistico_u_pub}")
+    print(f"P-valor = {p_valor_pub}")
+
+    # Interpretación del resultado
+    if p_valor_priv < alfa:
+        print(f"Rechazamos la hipótesis nula. Hay evidencia estadística de que la distribución de {name_model_b}_pub es mayor que la de {name_model_a}_pub.")
+    else:
+        print(f"No se rechaza la hipótesis nula. No hay evidencia suficiente para afirmar que la distribución de {name_model_b}_pub es mayor que la de {name_model_a}_pub.")

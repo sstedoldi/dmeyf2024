@@ -1,3 +1,4 @@
+comp_01/__pycache__
 comp_01/0-old
 comp_01/datos
 comp_01/gcp_vm
@@ -9,4 +10,6 @@ comp_01/modelos
 comp_01/optimizacion
 comp_01/.tmp
 gcp_vm
-
+comp_02/__pycache__
+comp_02/datos
+comp_02/optimizacion
