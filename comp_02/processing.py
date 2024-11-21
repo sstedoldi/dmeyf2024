@@ -13,7 +13,7 @@ import optuna
 
 # Definir la clase ModelPipeline
 class ModelPipeline:
-    def __init__(self, data, seeds, model_type='decision_tree', 
+    def __init__(self, data=None, seeds=[1], model_type='decision_tree', 
                  ganancia_acierto=273000, costo_estimulo=7000, 
                  threshold=0.025, seed=0, n_jobs=-1, reg=False):
         self.data = data
@@ -40,17 +40,22 @@ class ModelPipeline:
         }
 
     def def_xy(self, meses, target='clase_ternaria', to_pred=False):
-        # X = self.data[self.data['foto_mes'] == mes]
-        X = self.data[self.data['foto_mes'].isin(meses)]
-        y = X[target]
-        X = X.drop(columns=[target])
-
-        numero_de_cliente = X['numero_de_cliente']
-
-        if to_pred:
-            return X, numero_de_cliente
+        if self.data == None:
+            print("def_xy is not possible as data == None")
+            print("You may perform X vs y separation out of the pipe")
+            return
         else:
-            return X, y
+            # X = self.data[self.data['foto_mes'] == mes]
+            X = self.data[self.data['foto_mes'].isin(meses)]
+            y = X[target]
+            X = X.drop(columns=[target])
+
+            numero_de_cliente = X['numero_de_cliente']
+
+            if to_pred:
+                return X, numero_de_cliente
+            else:
+                return X, y
 
     def ganancia(self, model, X, y, prop=1):
         # Obtener las probabilidades predichas
@@ -114,8 +119,8 @@ class ModelPipeline:
 
             params = {
                 'booster': 'gbtree',
-                'n_estimators': 200,
-                # 'n_estimators': n_estimators,
+                # 'n_estimators': 200,
+                'n_estimators': n_estimators,
                 'max_leaves': max_leaves,
                 'learning_rate': learning_rate,
                 'gamma': gamma,
@@ -164,8 +169,8 @@ class ModelPipeline:
             max_bin = trial.suggest_int('max_bin', 64, 255)
 
             params = {
-                'n_estimators': 200,
-                # 'n_estimators': n_estimators,
+                # 'n_estimators': 200,
+                'n_estimators': n_estimators,
                 'num_leaves': num_leaves,
                 'learning_rate': learning_rate,
                 'min_data_in_leaf': min_data_in_leaf,
@@ -269,57 +274,59 @@ class ModelPipeline:
     def test_best_model(self, X, y):
         return self.test_model(self.best_model, X, y)
 
-    def simulate_kaggle_split(self, mes_futuro, imputer=None):
+    def simulate_kaggle_split(self, X_futuro, y_futuro, imputer=None, to_drop=None):
         """
         Simula el split público/privado como en una competencia de Kaggle.
         """
-        # Obtener los datos futuros
-        X_futuro, y_futuro = self.def_xy(mes_futuro, target='clase_ternaria', to_pred=False)
-        if imputer is not None:
-            X_futuro = pd.DataFrame(imputer.fit_transform(X_futuro), columns=X_futuro.columns)
+        # # Obtener los datos futuros
+        # X_futuro, y_futuro = self.def_xy(mes_futuro, target='clase_ternaria', to_pred=False)
+        # if to_drop is not None:
+        #     X_futuro = X_futuro.drop(columns=to_drop)
+        # if imputer is not None:
+        #     X_futuro = pd.DataFrame(imputer.transform(X_futuro), columns=X_futuro.columns)
 
         # Simular el split público/privado
-        sss_futuro = StratifiedShuffleSplit(n_splits=30, test_size=0.3, random_state=self.seeds[self.s])
+        sss_futuro = StratifiedShuffleSplit(n_splits=50, test_size=0.3, random_state=self.seeds[self.s])
 
-        ganancias_futuro_privada_best = []
-        ganancias_futuro_privada_base = []
-        ganancias_futuro_publica_best = []
-        ganancias_futuro_publica_base = []
+        gan_fut_priv_best = []
+        gan_fut_priv_base = []
+        gan_fut_pub_best = []
+        gan_fut_pub_base = []
 
         for train_index, test_index in sss_futuro.split(X_futuro, y_futuro):
             # Privado (70% de los datos)
-            ganancias_futuro_privada_best.append(
+            gan_fut_priv_best.append(
                 self.ganancia(self.best_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=0.7)
             )
-            ganancias_futuro_privada_base.append(
+            gan_fut_priv_base.append(
                 self.ganancia(self.base_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=0.7)
             )
             # Público (30% de los datos)
-            ganancias_futuro_publica_best.append(
+            gan_fut_pub_best.append(
                 self.ganancia(self.best_model, X_futuro.iloc[test_index], y_futuro.iloc[test_index], prop=0.3)
             )
-            ganancias_futuro_publica_base.append(
+            gan_fut_pub_base.append(
                 self.ganancia(self.base_model, X_futuro.iloc[test_index], y_futuro.iloc[test_index], prop=0.3)
             )
 
         # Crear DataFrames para visualización
         df_pred_1_best = pd.DataFrame({
-            'Ganancia': ganancias_futuro_privada_best,
+            'Ganancia': gan_fut_priv_best,
             'Modelo': 'Best',
             'Grupo': 'Privado'
         })
         df_pred_2_best = pd.DataFrame({
-            'Ganancia': ganancias_futuro_publica_best,
+            'Ganancia': gan_fut_pub_best,
             'Modelo': 'Best',
             'Grupo': 'Publico'
         })
         df_pred_1_base = pd.DataFrame({
-            'Ganancia': ganancias_futuro_privada_base,
+            'Ganancia': gan_fut_priv_base,
             'Modelo': 'Base',
             'Grupo': 'Privado'
         })
         df_pred_2_base = pd.DataFrame({
-            'Ganancia': ganancias_futuro_publica_base,
+            'Ganancia': gan_fut_pub_base,
             'Modelo': 'Base',
             'Grupo': 'Publico'
         })
@@ -349,6 +356,11 @@ class ModelPipeline:
         print(f"Ganancia media del modelo base en público: {mean_base_publico}")
         print(f"Ganancia media del modelo Best en privado: {mean_best_privado}")
         print(f"Ganancia media del modelo Best en público: {mean_best_publico}")
+
+        return gan_fut_priv_best, \
+                gan_fut_priv_base, \
+                gan_fut_pub_best, \
+                gan_fut_pub_base
 
 
 def plot_comparisons_on_kaggle_split(name_model_a, results_a_priv, results_a_pub,
@@ -431,3 +443,40 @@ def plot_comparisons_on_kaggle_split(name_model_a, results_a_priv, results_a_pub
         print(f"Rechazamos la hipótesis nula. Hay evidencia estadística de que la distribución de {name_model_b}_pub es mayor que la de {name_model_a}_pub.")
     else:
         print(f"No se rechaza la hipótesis nula. No hay evidencia suficiente para afirmar que la distribución de {name_model_b}_pub es mayor que la de {name_model_a}_pub.")
+
+
+def analyze_study(db_path, study_name):
+    # Load the study from the database
+    study = optuna.load_study(study_name=study_name, storage=db_path)
+
+    # Extract all trial data as a DataFrame
+    df = study.trials_dataframe()
+    print("\nStudy Trials DataFrame:\n")
+    print(df.head(10).to_markdown())
+
+    # Display basic statistics about the trials
+    print("\nBasic Statistics of Trials:\n")
+    print(df.describe().to_markdown())
+
+    # Identify the best trial
+    best_trial = study.best_trial
+    print("\nBest Trial:\n")
+    print(f"  Value: {best_trial.value}")
+    print("  Params:")
+    for key, value in best_trial.params.items():
+        print(f"    {key}: {value}")
+
+    # # Generate and save visualizations for the study
+    # # Plot Optimization History
+    # optuna.visualization.plot_optimization_history(study)
+
+    # # Plot Parallel Coordinate Plot for parameter interactions
+    # optuna.visualization.plot_parallel_coordinate(study)
+
+    # # Plot Parameter Importance
+    # optuna.visualization.plot_param_importances(study)
+
+    # # Additional plots: Slice plot
+    # optuna.visualization.plot_slice(study)
+
+    return study
