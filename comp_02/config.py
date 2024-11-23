@@ -73,7 +73,7 @@ variables_x = [
     'ccuenta_debitos_automaticos',
     'mcuenta_debitos_automaticos',
     'ctarjeta_visa_debitos_automaticos',
-    'mtarjeta_visa_debitos_automaticos',
+    # 'mtarjeta_visa_debitos_automaticos', # rompe el comp02_fe6_6x
     'ctarjeta_master_debitos_automaticos',
     'mttarjeta_master_debitos_automaticos',
     'cpagodeservicios',
@@ -127,7 +127,7 @@ variables_x = [
     'Master_status',
     'Master_mfinanciacion_limite',
     'Master_Fvencimiento',
-    'Master_Finiciomora',
+    # 'Master_Finiciomora', # data drifting
     'Master_msaldototal',
     'Master_msaldopesos',
     'Master_msaldodolares',
@@ -136,7 +136,7 @@ variables_x = [
     'Master_mlimitecompra',
     'Master_madelantopesos',
     'Master_madelantodolares',
-    'Master_fultimo_cierre',
+    # 'Master_fultimo_cierre', # data drifting
     'Master_mpagado',
     'Master_mpagospesos',
     'Master_mpagosdolares',
@@ -149,7 +149,7 @@ variables_x = [
     'Visa_status',
     'Visa_mfinanciacion_limite',
     'Visa_Fvencimiento',
-    'Visa_Finiciomora',
+    # 'Visa_Finiciomora', # data drifting
     'Visa_msaldototal',
     'Visa_msaldopesos',
     'Visa_msaldodolares',
@@ -158,7 +158,7 @@ variables_x = [
     'Visa_mlimitecompra',
     'Visa_madelantopesos',
     'Visa_madelantodolares',
-    'Visa_fultimo_cierre',
+    # 'Visa_fultimo_cierre', # data drifting
     'Visa_mpagado',
     'Visa_mpagospesos',
     'Visa_mpagosdolares',
