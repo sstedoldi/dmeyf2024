@@ -17,3 +17,4 @@ comp_02/0-old
 comp_02/modelos
 comp_02/predicciones/*.csv
 comp_02/predicciones/0-old
+comp_02/predicciones/probas/*.csv
