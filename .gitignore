@@ -18,3 +18,11 @@ comp_02/modelos
 comp_02/predicciones/*.csv
 comp_02/predicciones/0-old
 comp_02/predicciones/probas/*.csv
+comp_03/__pycache__
+comp_03/datos
+comp_03/optimizacion
+comp_03/0-old
+comp_03/modelos
+comp_03/predicciones/*.csv
+comp_03/predicciones/0-old
+comp_03/predicciones/probas/*.csv
