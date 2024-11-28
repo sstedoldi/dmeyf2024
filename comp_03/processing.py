@@ -15,7 +15,8 @@ import optuna
 class ModelPipeline:
     def __init__(self, data=None, seeds=[1], model_type='decision_tree', 
                  ganancia_acierto=273000, costo_estimulo=7000, 
-                 threshold=0.025, seed=0, n_jobs=-1, reg=False):
+                 threshold=0.025, seed=0, n_jobs=-1, reg=False,
+                 meses_opt=1, meses_test=1):
         self.data = data
         self.seeds = seeds
         self.s = seed
@@ -25,6 +26,8 @@ class ModelPipeline:
         self.costo_estimulo = costo_estimulo
         self.threshold = threshold
         self.reg = reg
+        self.meses_opt = meses_opt
+        self.meses_test = meses_test
         self.models = {}
         self.base_params = {'random_state': self.seeds[self.s]}
         self.best_params = None
@@ -86,56 +89,51 @@ class ModelPipeline:
         )
 
         # Sumar las ganancias
-        total_gain = gains.sum()/prop
+        total_gain = gains.sum()/(prop)
 
         return total_gain
 
-    def train_and_evaluate(self, train_index, test_index, X, y, params):
+    def train_and_evaluate(self, train_index, test_index, X, y, params, prop):
         # Instanciar el clasificador basado en model_type
         classifier_class = self.classifier_map[self.model_type]
         model = classifier_class(**params)
         model.fit(X.iloc[train_index], y.iloc[train_index])
-        ganancia_value = self.ganancia(model, X.iloc[test_index], y.iloc[test_index], prop=0.3)
+        ganancia_value = self.ganancia(model, X.iloc[test_index], y.iloc[test_index], prop=prop)
         return model, ganancia_value
 
-    def optimize_model(self, X, y, storage_name, study_name, optimize=True, n_trials=200):
-        sss_opt = ShuffleSplit(n_splits=5, test_size=0.3, random_state=self.seeds[self.s])
+    def optimize_model(self, X, y, storage_name, study_name, test_size=0.3, optimize=True, n_trials=200):
+        sss_opt = ShuffleSplit(n_splits=5, test_size=test_size, random_state=self.seeds[self.s])
 
         def objective_xgboost(trial):
             # Hiperparámetros para XGBClassifier
 
             # Parámetros a optimizar
-            n_estimators = trial.suggest_int('n_estimators', 100, 500)
-            max_leaves = trial.suggest_int('max_leaves', 10, 256)
-            learning_rate = trial.suggest_float('eta', 0.01, 0.3, log=True)  # 'eta' es equivalente a 'learning_rate'
-            gamma = trial.suggest_float('gamma', 0, 5)
-            min_child_weight = trial.suggest_int('min_child_weight', 1, 10)
-            subsample = trial.suggest_float('subsample', 0.5, 0.9)
-            colsample_bytree = trial.suggest_float('colsample_bytree', 0.5, 0.9)
+            n_estimators = trial.suggest_int('n_estimators', 400, 800)
+            max_leaves = trial.suggest_int('max_leaves', 100, 356)
+            learning_rate = trial.suggest_float('eta', 0.015, 0.1, log=True)  # 'eta' es equivalente a 'learning_rate'
+            min_child_weight = trial.suggest_int('min_child_weight', 7, 15)
+            subsample = trial.suggest_float('subsample', 0.7, 0.95)
+            colsample_bytree = trial.suggest_float('colsample_bytree', 0.2, 0.6)
             if self.reg:
                 reg_lambda = trial.suggest_float('lambda', 0.0, 10.0)
                 reg_alpha = trial.suggest_float('alpha', 0.0, 10.0)
             # scale_pos_weight = trial.suggest_float('scale_pos_weight', 1.0, 10.0)
 
             params = {
-                'booster': 'gbtree',
-                # 'n_estimators': 200,
                 'n_estimators': n_estimators,
                 'max_leaves': max_leaves,
                 'learning_rate': learning_rate,
-                'gamma': gamma,
                 'min_child_weight': min_child_weight,
-                'subsample': subsample,
                 'colsample_bytree': colsample_bytree,
-                # 'scale_pos_weight': scale_pos_weight, # default = 1, ya que la ganancia ya contempla desbalance
-                'random_state': self.seeds[self.s],
-                'enable_categorical': True,
-                'use_label_encoder': False,
+                'subsample': subsample,
+                # 'random_state': self.seeds[self.s], # Opt sin semilla para robustez
                 'objective': 'multi:softprob',
                 'num_class': 3,
-                'eval_metric': 'mlogloss',
-                'tree_method': 'hist',      # Usar 'hist' para grandes conjuntos de datos
+                'eval_metric': 'mlogloss', 
+                'booster': 'gbtree',
                 'grow_policy': 'lossguide', # Necesario cuando se usa 'max_leaves'
+                'tree_method': 'hist',      # Usar 'hist' para grandes conjuntos de datos
+                'n_jobs': self.n_jobs,
             }
 
             if self.reg:
@@ -146,7 +144,7 @@ class ModelPipeline:
 
             # Ejecutar validación cruzada paralela
             results = Parallel(n_jobs=self.n_jobs)(
-                delayed(self.train_and_evaluate)(train_index, test_index, X, y, params)
+                delayed(self.train_and_evaluate)(train_index, test_index, X, y, params, test_size*self.meses_opt)
                 for train_index, test_index in sss_opt.split(X, y)
             )
 
@@ -155,31 +153,23 @@ class ModelPipeline:
 
         def objective_lightgbm(trial):
             # Hiperparámetros para LGBMClassifier
-            n_estimators = trial.suggest_int('n_estimators', 50, 500)
-            num_leaves = trial.suggest_int('num_leaves', 31, 256)
-            learning_rate = trial.suggest_float('learning_rate', 0.001, 0.3, log=True)
-            min_data_in_leaf = trial.suggest_int('min_data_in_leaf', 20, 100)
+            n_estimators = trial.suggest_int('n_estimators', 400, 800)
+            num_leaves = trial.suggest_int('num_leaves', 20, 80)
+            learning_rate = trial.suggest_float('learning_rate', 0.01, 0.1, log=True)
+            min_data_in_leaf = trial.suggest_int('min_data_in_leaf', 80, 200)
+            feature_fraction = trial.suggest_float('feature_fraction', 0.2, 0.6)
             if self.reg:
                 lambda_l1 = trial.suggest_float('lambda_l1', 0.0, 10.0)
                 lambda_l2 = trial.suggest_float('lambda_l2', 0.0, 10.0)
-            min_gain_to_split = trial.suggest_float('min_gain_to_split', 0.0, 1.0)
-            feature_fraction = trial.suggest_float('feature_fraction', 0.5, 0.9)
-            bagging_fraction = trial.suggest_float('bagging_fraction', 0.5, 0.9)
-            bagging_freq = trial.suggest_int('bagging_freq', 1, 7)
-            max_bin = trial.suggest_int('max_bin', 64, 255)
 
             params = {
-                # 'n_estimators': 200,
                 'n_estimators': n_estimators,
                 'num_leaves': num_leaves,
                 'learning_rate': learning_rate,
                 'min_data_in_leaf': min_data_in_leaf,
-                'min_gain_to_split': min_gain_to_split,
                 'feature_fraction': feature_fraction,
-                'bagging_fraction': bagging_fraction,
-                'bagging_freq': bagging_freq,
-                'max_bin': max_bin,
-                'random_state': self.seeds[self.s],
+                'extra_trees': False,
+                # 'random_state': self.seeds[self.s], # Opt sin semilla para robustez
                 'n_jobs': self.n_jobs
             }
 
@@ -190,7 +180,7 @@ class ModelPipeline:
                 })
 
             results = Parallel(n_jobs=self.n_jobs)(
-                delayed(self.train_and_evaluate)(train_index, test_index, X, y, params)
+                delayed(self.train_and_evaluate)(train_index, test_index, X, y, params, test_size*self.meses_opt)
                 for train_index, test_index in sss_opt.split(X)
             )
 
@@ -230,19 +220,20 @@ class ModelPipeline:
         if self.best_params is None:
             print("No se encontraron mejores parámetros. Por favor, ejecuta optimize_model primero.")
             return
+        self.best_params.update({'random_state': self.seeds[self.s]}) # misma semilla que en el base
         classifier_class = self.classifier_map[self.model_type]
         self.best_model = classifier_class(**self.best_params)
         self.best_model.fit(X_train, y_train)
 
-    def compare_models(self, X, y):
-        sss = StratifiedShuffleSplit(n_splits=30, test_size=0.3, random_state=self.seeds[self.s])
+    def compare_models(self, X, y, test_size=0.3):
+        sss = StratifiedShuffleSplit(n_splits=30, test_size=test_size, random_state=self.seeds[self.s])
 
         results_base = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.train_and_evaluate)(train_index, test_index, X, y, self.base_params)
+            delayed(self.train_and_evaluate)(train_index, test_index, X, y, self.base_params, prop=test_size)
             for train_index, test_index in sss.split(X, y)
         )
         results_best = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.train_and_evaluate)(train_index, test_index, X, y, self.best_params)
+            delayed(self.train_and_evaluate)(train_index, test_index, X, y, self.best_params, prop=test_size)
             for train_index, test_index in sss.split(X, y)
         )
 
@@ -264,8 +255,9 @@ class ModelPipeline:
         print(f"Ganancia media del modelo Best: {mean_best}")
 
     def test_model(self, model, X, y):
-        ganancia_test = self.ganancia(model, X, y)
-        print(f"Ganancia del modelo en el conjunto de test: {ganancia_test}")
+        ganancia_test = self.ganancia(model, X, y, prop=self.meses_test)
+        print(f"Ganancia del modelo en el conjunto de test: {ganancia_test} por mes")
+        print(f"Según un promedio de los {self.meses_test} meses evaluados")
         return ganancia_test
 
     def test_base_model(self, X, y):
@@ -274,19 +266,12 @@ class ModelPipeline:
     def test_best_model(self, X, y):
         return self.test_model(self.best_model, X, y)
 
-    def simulate_kaggle_split(self, X_futuro, y_futuro, imputer=None, to_drop=None):
+    def simulate_kaggle_split(self, X_futuro, y_futuro, test_size=0.3, imputer=None, to_drop=None):
         """
         Simula el split público/privado como en una competencia de Kaggle.
         """
-        # # Obtener los datos futuros
-        # X_futuro, y_futuro = self.def_xy(mes_futuro, target='clase_ternaria', to_pred=False)
-        # if to_drop is not None:
-        #     X_futuro = X_futuro.drop(columns=to_drop)
-        # if imputer is not None:
-        #     X_futuro = pd.DataFrame(imputer.transform(X_futuro), columns=X_futuro.columns)
-
         # Simular el split público/privado
-        sss_futuro = StratifiedShuffleSplit(n_splits=50, test_size=0.3, random_state=self.seeds[self.s])
+        sss_futuro = StratifiedShuffleSplit(n_splits=50, test_size=test_size, random_state=self.seeds[self.s])
 
         gan_fut_priv_best = []
         gan_fut_priv_base = []
@@ -296,17 +281,17 @@ class ModelPipeline:
         for train_index, test_index in sss_futuro.split(X_futuro, y_futuro):
             # Privado (70% de los datos)
             gan_fut_priv_best.append(
-                self.ganancia(self.best_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=0.7)
+                self.ganancia(self.best_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=1-test_size)
             )
             gan_fut_priv_base.append(
-                self.ganancia(self.base_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=0.7)
+                self.ganancia(self.base_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=1-test_size)
             )
             # Público (30% de los datos)
             gan_fut_pub_best.append(
-                self.ganancia(self.best_model, X_futuro.iloc[test_index], y_futuro.iloc[test_index], prop=0.3)
+                self.ganancia(self.best_model, X_futuro.iloc[test_index], y_futuro.iloc[test_index], prop=test_size)
             )
             gan_fut_pub_base.append(
-                self.ganancia(self.base_model, X_futuro.iloc[test_index], y_futuro.iloc[test_index], prop=0.3)
+                self.ganancia(self.base_model, X_futuro.iloc[test_index], y_futuro.iloc[test_index], prop=test_size)
             )
 
         # Crear DataFrames para visualización
@@ -465,18 +450,5 @@ def analyze_study(db_path, study_name):
     print("  Params:")
     for key, value in best_trial.params.items():
         print(f"    {key}: {value}")
-
-    # # Generate and save visualizations for the study
-    # # Plot Optimization History
-    # optuna.visualization.plot_optimization_history(study)
-
-    # # Plot Parallel Coordinate Plot for parameter interactions
-    # optuna.visualization.plot_parallel_coordinate(study)
-
-    # # Plot Parameter Importance
-    # optuna.visualization.plot_param_importances(study)
-
-    # # Additional plots: Slice plot
-    # optuna.visualization.plot_slice(study)
 
     return study
