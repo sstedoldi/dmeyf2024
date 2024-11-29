@@ -11,6 +11,8 @@ dataset_file_clase_ternaria = datasets_path + 'competencia_03_brandoni.csv.gz'
 dataset_file_prepro_6x = datasets_path + 'competencia_03_brandoni_prepro_6x.parquet'
 dataset_file_fe6_6xpqt = datasets_path + 'competencia_03_fe6_6x.parquet'
 dataset_file_fe6_6xpqt_opt_under = datasets_path + 'competencia_03_fe6x_opt_under.parquet'
+dataset_202107 = datasets_path + 'competencia_03_202107.parquet'
+dataset_202109 = datasets_path + 'competencia_03_202109.parquet'
 
 variables_x = [
     'active_quarter',
