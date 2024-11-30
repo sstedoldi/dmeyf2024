@@ -106,8 +106,6 @@ class ModelPipeline:
 
         def objective_xgboost(trial):
             # Hiperparámetros para XGBClassifier
-
-            # Parámetros a optimizar
             n_estimators = trial.suggest_int('n_estimators', 400, 800)
             max_leaves = trial.suggest_int('max_leaves', 100, 356)
             learning_rate = trial.suggest_float('eta', 0.015, 0.1, log=True)  # 'eta' es equivalente a 'learning_rate'
