@@ -277,14 +277,14 @@ class ModelPipeline:
         gan_fut_pub_base = []
 
         for train_index, test_index in sss_futuro.split(X_futuro, y_futuro):
-            # Privado (70% de los datos)
+            # Privado
             gan_fut_priv_best.append(
                 self.ganancia(self.best_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=1-test_size)
             )
             gan_fut_priv_base.append(
                 self.ganancia(self.base_model, X_futuro.iloc[train_index], y_futuro.iloc[train_index], prop=1-test_size)
             )
-            # Público (30% de los datos)
+            # Público
             gan_fut_pub_best.append(
                 self.ganancia(self.best_model, X_futuro.iloc[test_index], y_futuro.iloc[test_index], prop=test_size)
             )
