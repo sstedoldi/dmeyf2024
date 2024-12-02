@@ -26,3 +26,4 @@ comp_03/modelos
 comp_03/predicciones/*.csv
 comp_03/predicciones/0-old
 comp_03/predicciones/probas/*.csv
+comp_03/predicciones/umbral_kaggle
